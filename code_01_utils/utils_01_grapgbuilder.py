@@ -21,7 +21,8 @@ class GraphBuilder:
             node_id_col: str = "caid",
     ):
         df = pd.read_csv(from_csv)
-        df["trjid"] = df.apply(lambda row: f"u{row.uid}_d{row.d}", axis=1) if split_by_day else df["uid"]
+        if "trjid" not in df.columns:
+            df["trjid"] = df.apply(lambda row: f"u{row.uid}_d{row.d}", axis=1) if split_by_day else df["uid"]
 
         # 添加节点信息
         for _, group in richprogress.track(df.groupby([node_id_col]), description="[+] adding nodes"):
