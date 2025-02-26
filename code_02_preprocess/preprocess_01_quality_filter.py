@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 import typing as tp
 import multiprocessing as mp
 import functools
@@ -8,16 +7,13 @@ import os
 import random
 
 
-# import warnings
-# warnings.filterwarnings('error')
-
-
 def p1_merge_48_to_24(
         from_csv: str | pd.DataFrame,
         to_csv: str,
         min_num_records_per_day: int = 16,
         valid_d_range: tuple = (0, 31, 1),
         num_workers: int = 8,
+        return_df: bool = False,
 ):
     """
     原始数据是每天0~47个时刻
@@ -28,13 +24,9 @@ def p1_merge_48_to_24(
             如果上一个/下一个时刻都是空的，则为空
     """
 
-    if isinstance(from_csv, pd.DataFrame):
-        df = from_csv
-    elif isinstance(from_csv, str):
-        df = pd.read_csv(from_csv)
-    else:
-        raise TypeError("[!] from_csv must be DataFrame or str")
-
+    df = from_csv if isinstance(from_csv, pd.DataFrame) else pd.read_csv(from_csv)
+    df["x"] = df["x"] - 1
+    df["y"] = df["y"] - 1
     df = df[df["d"].isin(range(*valid_d_range))]
     workers = mp.Pool(num_workers)
     task = functools.partial(
@@ -52,8 +44,11 @@ def p1_merge_48_to_24(
     results = pd.concat(results).sort_values(by=["uid", "d", "t"]).reset_index(drop=True)
     tmp = results["uid"].unique()
     print(f"有效UID共{len(tmp)}个")
-    to_csv = to_csv.replace(".csv", f"_num{len(tmp)}.csv")
+    to_csv = to_csv.replace(".csv", f"_UID_{len(tmp)}.csv")
     results.to_csv(to_csv, index=False)
+
+    if return_df:
+        return results
 
 
 def p1_task(
@@ -133,7 +128,8 @@ def p1_task(
 
             # 如果用户在任何一天经过的不同位置节点(bsid_200级别)数量小于3
             # 则放弃该用户
-            if df_today["bsid_200"].nunique() < 3:
+            # if df_today["bsid_200"].nunique() < 3:
+            if df_today["bsid_200"].nunique() < 8:
                 return None
 
             df_today.ffill(axis=0, inplace=True)
@@ -154,28 +150,47 @@ def p1_task(
 if __name__ == "__main__":
     os.chdir(r"C:\Users\MTX\Documents\Code\Python3\Essay_II_v3")
     # main_df = pd.read_csv("data_01_dataset/YJMob100K/yjmob100k-dataset-test.csv", dtype=int)
-    main_df = pd.read_csv("data_01_dataset/YJMob100K/yjmob100k-dataset-merged.csv", dtype=int)
+    main_df = pd.read_csv("data_01_dataset/YJMob100K/YJMOB_125000.csv", dtype=int)
+
+    # min_num_records = 20
+    # d_start = 5
+    # d_duration = 20
+    # d_end = d_start + d_duration
+
+    # target_dir = f"data_02_preprocessed_data/YJMob100K/p1_filtered"
+    # os.makedirs(target_dir, exist_ok=True)
+    # while d_end < 75:
+    #     p1_merge_48_to_24(
+    #         from_csv=main_df,
+    #         to_csv=f"{target_dir}/DURATION_{d_duration}_DAY_{d_start:02d}_{d_end - 1:02d}.csv",
+    #         min_num_records_per_day=min_num_records,
+    #         valid_d_range=(d_start, d_end, 1),
+    #         num_workers=8,
+    #         # num_workers=1,
+    #     )
+    #     if d_start >= 15:
+    #         break
+    #     d_start += 1
+    #     d_end += 1
+
 
     min_num_records = 20
-    d_start = 0
-    d_duration = 40
+    d_start = 4
+    d_duration = 20
     d_end = d_start + d_duration
 
-    target_dir = f"data_02_preprocessed_data/YJMob100K/p1_filtered/{d_duration}days_{min_num_records}records"
+    target_dir = f"data_02_preprocessed_data/YJMob100K/p1_filtered_strict"
     os.makedirs(target_dir, exist_ok=True)
-
     while d_end < 75:
         p1_merge_48_to_24(
             from_csv=main_df,
-            to_csv=f"{target_dir}/day_{d_start:02d}_to_{d_end - 1:02d}.csv",
+            to_csv=f"{target_dir}/DURATION_{d_duration}_DAY_{d_start:02d}_{d_end - 1:02d}.csv",
             min_num_records_per_day=min_num_records,
             valid_d_range=(d_start, d_end, 1),
             num_workers=8,
             # num_workers=1,
         )
-
-        if d_start > 20:
+        if d_start >= 9:
             break
-
         d_start += 1
         d_end += 1

@@ -20,20 +20,14 @@ class GraphBuilder:
             csv_path: str,
             remove_loops: bool = False,
             user_id_col: str = "uid",
-            node_id_col: str = "caid",
-            trajectory_id_col: tp.Literal["trjid", None] = None,
-            x_col: str = "x",
-            y_col: str = "y",
-            d_col: str = "d",
-            t_col: str = "t",
+            node_id_col: str = "bsid",
     ):
-        # valid_columns = [user_id_col, node_id_col, x_col, y_col, d_col, t_col]
-        # if trajectory_id_col is not None:
-        #     valid_columns.insert(0, trajectory_id_col)
-        # df = pd.read_csv(csv_path, usecols=valid_columns)
         df = pd.read_csv(csv_path)
-        if trajectory_id_col is None:
-            df["trjid"] = df.apply(lambda row: f"trj_u{row[user_id_col]}_d{row[d_col]}", axis=1)
+        if "trjid" not in df.columns:
+            if "d" in df.columns:
+                df["trjid"] = df.apply(lambda row: f"{row[user_id_col]}trj{row.d:03d}", axis=1)
+            else:
+                df["trjid"] = df.apply(lambda row: f"{row[user_id_col]}trj000", axis=1)
 
         # ADD NODE
         for node_name, group in track(df.groupby(node_id_col), description="[+] Adding nodes"):
@@ -45,7 +39,7 @@ class GraphBuilder:
                 y=group.at[0, "y"],
                 popularity=group["trjid"].nunique(),
             )
-        pp(f"[=] {self.graph.number_of_nodes()} nodes added.")
+        print(f"[=] {self.graph.number_of_nodes()} nodes added.")
 
         # ADD EDGE
         for trj_name, group in track(df.groupby("trjid"), description="[+] Adding edges"):
@@ -65,12 +59,12 @@ class GraphBuilder:
                     else:
                         self.graph.add_edge(node_a, node_b, weight=1)
                     node_a = node_b
-        pp(f"[=] {self.graph.number_of_edges()} edges added.")
+        print(f"[=] {self.graph.number_of_edges()} edges added.")
         return self
 
     def plot_ext(
             self,
-            node_size: float = 0.1,
+            node_size: float | None = None,
             # arrow_size: int = 1,
             alpha: float = 0.8,
             fig_size: int | tp.Tuple[int, int] = 8,
@@ -99,7 +93,7 @@ class GraphBuilder:
         nx.draw_networkx_nodes(
             self.graph,
             # node_size=node_size,
-            node_size=[node_size * popu for popu in node_popularities],
+            node_size=[node_size * popu for popu in node_popularities] if node_size is not None else 1,
             pos=layout,
             node_color=node_color,
         )
@@ -116,10 +110,10 @@ class GraphBuilder:
             self.graph,
             pos=layout,
             # arrowstyle="->",
-            alpha=alpha,
             # arrowsize=arrow_size,
+            alpha=alpha,
             edge_cmap=cmap,
-            width=2,
+            width=3,
             edge_color=edge_weights,
         )
 
@@ -133,17 +127,17 @@ if __name__ == "__main__":
     os.chdir(r"C:\Users\MTX\Documents\Code\Python3\Essay_II_v3")
 
     builder = GraphBuilder("undirected").from_csv(
-        csv_path="data_02_preprocessed_data/YJMob100K/p1_filtered/40days_20records/day_05_to_44_num88.csv",
+        # csv_path="data_02_preprocessed_data/YJMob100K/p1_filtered_strict/DURATION_20_DAY_07_26_UID_20.csv",
+        csv_path="data_02_preprocessed_data/YJMob100K/p1_filtered/DURATION_40_DAY_14_53_UID_80.csv",
         remove_loops=True,
-        node_id_col="bsid_200",
+        node_id_col="bsid_50",
     )
 
     builder.plot_ext(
-        node_size=0.5,
+        node_size=1.2,
         alpha=0.25,
         fig_size=(16, 16),
         custom_scaler_max_ratio=0.9,
-        # custom_scaler_max_ratio=None,
         node_color="blue",
         # cmap_name="cool",
     )

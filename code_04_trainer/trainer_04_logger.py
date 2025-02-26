@@ -6,7 +6,7 @@ class TrainerLogger:
     def __init__(self, log_path: str| None):
         logger_format = ""
         logger_format += "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green>"
-        logger_format += "<level>{message}</level>"
+        logger_format += "<level>  {message}  </level>"
         logger.remove(handler_id=None)
         logger.add(sink=sys.stdout, format=logger_format, level="INFO")
         if log_path is not None:
