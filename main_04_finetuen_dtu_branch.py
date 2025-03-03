@@ -67,6 +67,7 @@ def main_finetuen_dtu_branch(
     num_nodes = int(torch.max(finetune_data).item())
 
     # 小样本
+    tfm.set_seed(888)
     finetune_data = finetune_data[torch.randperm(num_samples), :, :]
     num_samples = ex_num_samples
     num_users = ex_num_users

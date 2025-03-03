@@ -63,6 +63,7 @@ def main_finetune_dtvu(
     num_users -= 2
 
     # 小样本
+    tfm.set_seed(888)
     finetune_data = finetune_data[torch.randperm(num_samples), :, :, :]
     finetune_targets = finetune_targets[torch.randperm(num_samples), :, :]
     num_samples = ex_num_samples
@@ -77,7 +78,6 @@ def main_finetune_dtvu(
     if isinstance(history_step, int):
         history_steps = [history_step for _ in range(num_epochs)]
     elif isinstance(history_step, tuple):
-        random.seed(888)
         assert batch_size == 1 and val_batch_size == 1
         tmp = [int(num_ticks * random.uniform(*history_step)) for _ in range(num_samples - size_trn)]
         history_steps = [tmp for _ in range(num_epochs)]
@@ -192,20 +192,6 @@ def main_finetune_dtvu(
                 preds_step=3,
                 enable_v2g=enable_v2g,
             ),
-            # val_record_step4=trainer.validate_epoch_dynamic(
-            #     loader=val_loader,
-            #     epoch_index=epoch_index,
-            #     history_step=history_steps[epoch_index],
-            #     preds_step=4,
-            #     enable_v2g=enable_v2g,
-            # ),
-            # val_record_step8=trainer.validate_epoch_dynamic(
-            #     loader=val_loader,
-            #     epoch_index=epoch_index,
-            #     history_step=history_steps[epoch_index],
-            #     preds_step=8,
-            #     enable_v2g=enable_v2g,
-            # )
         )
         # =======================================================
         if tensorboard_dir is None:
@@ -244,22 +230,22 @@ if __name__ == "__main__":
         model_type="sequential",
         device="cuda:0",
         config_path="code_00_configs/modernbert_config_dropout.json",
-        global_seed=42,
+        # global_seed=42,
         embed_dim=128,
         num_heads=4,
-        num_layers=6,
+        num_layers=12,
         num_sub_graphs=128,
         enable_v2g=True,
         tensorboard_dir="record_01_tensorboard",
-        learning_rate=1e-3,
+        # learning_rate=5e-4,
         weight_decay=1e-4,
-        # scheduler_policy="epoch",
+        scheduler_policy="epoch",
         clip_grad_norm_factor=0.1,
-        num_epochs=40,
+        # num_epochs=64,
         history_step=(0.4, 0.8),
         # preds_step=2,
     )
 
-    main_finetune_dtvu_partial(ex_num_samples=20, ex_num_users=5)
-    main_finetune_dtvu_partial(ex_num_samples=20, ex_num_users=10)
-    main_finetune_dtvu_partial(ex_num_samples=20, ex_num_users=20)
+    main_finetune_dtvu_partial(ex_num_samples=20, ex_num_users=5, num_epochs=64, global_seed=0, learning_rate=5e-4)
+    main_finetune_dtvu_partial(ex_num_samples=20, ex_num_users=5, num_epochs=64, global_seed=1, learning_rate=5e-4)
+    main_finetune_dtvu_partial(ex_num_samples=20, ex_num_users=5, num_epochs=64, global_seed=2, learning_rate=5e-4)

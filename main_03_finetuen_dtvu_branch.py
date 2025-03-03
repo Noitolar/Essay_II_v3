@@ -71,6 +71,7 @@ def main_finetuen_dtvu_branch(
     num_users -= 2
 
     # 小样本
+    tfm.set_seed(42)
     finetune_data = finetune_data[torch.randperm(num_samples), :, :, :]
     finetune_targets = finetune_targets[torch.randperm(num_samples), :, :]
     num_samples = ex_num_samples
@@ -155,6 +156,8 @@ def main_finetuen_dtvu_branch(
     )
     for name, param in model.named_parameters():
         if "sequential_layer_" in name or "parallel_layer_" in name:
+            param.requires_grad = False
+        if "v2g" in name or "v2g" in name:
             param.requires_grad = False
     # =======================================================
     # =======================================================
@@ -269,27 +272,28 @@ if __name__ == "__main__":
         model_type="sequential",
         device="cuda:0",
         config_path="code_00_configs/modernbert_config_dropout.json",
-        checkpoint_path="data_03_checkpoint/EMB_384_HEAD_6_LAYER_12_SUBGRAPH_256/pretrain_final.bin",
-        global_seed=42,
-        embed_dim=384,
-        num_heads=6,
+        # checkpoint_path="data_03_checkpoint/EMB_384_HEAD_6_LAYER_12_SUBGRAPH_256/pretrain_final.bin",
+        checkpoint_path="data_03_checkpoint/EMB_512_HEAD_8_LAYER_12_SUBGRAPH_192/pretrain_final.bin",
+        # global_seed=42,
+        embed_dim=512,
+        num_heads=8,
         num_layers=12,
         # num_sub_graphs=128,  # 256 本地跑不动
         enable_v2g=True,
         tensorboard_dir="record_01_tensorboard",
-        learning_rate=5e-4,
+        # learning_rate=5e-4,
         weight_decay=1e-4,
         # scheduler_policy="epoch",
         clip_grad_norm_factor=0.1,
-        num_epochs=50,
+        num_epochs=64,
         history_step=(0.4, 0.8),
         # preds_step=2,
 
-        num_sub_graphs=128,
+        num_sub_graphs=192,
         embed_dim_branch=128,
-        num_heads_branch=4,
+        num_heads_branch=2,
     )
 
-    main_finetune_dtvu_branch_partial(ex_num_samples=20, ex_num_users=5)
-    main_finetune_dtvu_branch_partial(ex_num_samples=20, ex_num_users=10)
-    main_finetune_dtvu_branch_partial(ex_num_samples=20, ex_num_users=20)
+    main_finetune_dtvu_branch_partial(learning_rate=1e-3,global_seed=0,ex_num_samples=20, ex_num_users=5)
+    # main_finetune_dtvu_branch_partial(learning_rate=1e-3,global_seed=1,ex_num_samples=20, ex_num_users=5)
+    # main_finetune_dtvu_branch_partial(learning_rate=1e-3,global_seed=2,ex_num_samples=20, ex_num_users=5)

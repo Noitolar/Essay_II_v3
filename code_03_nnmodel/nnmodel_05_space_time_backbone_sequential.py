@@ -186,6 +186,7 @@ class SpaceTimeBackboneSequential(nn3.SpaceTimeBackboneBase):
         # ======================================================
         # ======================================================
         x = self.forward_sequential_layers(x, attn_mask, d, t, o, e)
+        # x = self.forward_sequential_layers_time_only(x, attn_mask, d, t, o, e)
         # ======================================================
         # ======================================================
         assert x.shape == torch.Size([d * o, t, e])
@@ -248,6 +249,7 @@ class SpaceTimeBackboneSequential(nn3.SpaceTimeBackboneBase):
         # ======================================================
         # ======================================================
         x = self.forward_sequential_layers(x, attn_mask_u, d, t, u, e)
+        # x = self.forward_sequential_layers_time_only(x, attn_mask_u, d, t, u, e)
         # ======================================================
         # ======================================================
         assert x.shape == torch.Size([d * u, t, e])
@@ -333,6 +335,45 @@ class SpaceTimeBackboneSequential(nn3.SpaceTimeBackboneBase):
         # ======================================================
         position_ids = torch.arange(t, device=x.device).unsqueeze(0)
         x, attn_mask = self.dt_o_e__2__do_t_e(x, attn_mask, d, t, o, e)
+        altered_attn_mask, sliding_window_mask = self.update_attention_mask(attn_mask)
+        for time_layer in time_layers:
+            x = time_layer(
+                x,
+                attention_mask=altered_attn_mask,
+                sliding_window_mask=sliding_window_mask,
+                position_ids=position_ids,
+                output_attentions=False,
+            )[0]
+        # ======================================================
+        return x
+
+
+    def forward_sequential_layers_time_only(
+            self,
+            x: torch.Tensor,
+            attn_mask: torch.Tensor,
+            d: int,
+            t: int,
+            o: int,
+            e: int,
+    ):
+        # space_layers = [layer for name, layer in self.layers.named_children() if "space" in name]
+        time_layers = [layer for name, layer in self.layers.named_children() if "time" in name]
+        # ======================================================
+        # position_ids = torch.arange(o, device=x.device).unsqueeze(0)
+        # x, attn_mask = self.do_t_e__2__dt_o_e(x, attn_mask, d, t, o, e)
+        # altered_attn_mask, sliding_window_mask = self.update_attention_mask(attn_mask)
+        # for space_layer in space_layers:
+        #     x = space_layer(
+        #         x,
+        #         attention_mask=altered_attn_mask,
+        #         sliding_window_mask=sliding_window_mask,
+        #         position_ids=position_ids,
+        #         output_attentions=False,
+        #     )[0]
+        # ======================================================
+        position_ids = torch.arange(t, device=x.device).unsqueeze(0)
+        # x, attn_mask = self.dt_o_e__2__do_t_e(x, attn_mask, d, t, o, e)
         altered_attn_mask, sliding_window_mask = self.update_attention_mask(attn_mask)
         for time_layer in time_layers:
             x = time_layer(

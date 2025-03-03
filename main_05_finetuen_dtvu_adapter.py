@@ -13,7 +13,7 @@ import random
 import code_01_utils.utils_02_confg_loader as ut2
 import code_03_nnmodel.nnmodel_05_space_time_backbone_sequential as nn5
 import code_03_nnmodel.nnmodel_06_space_time_backbone_parallel as nn6
-import code_03_nnmodel.nnmodel_08_side_branches_sequential as nn8
+import code_03_nnmodel.nnmodel_09_adapter_in_sequential as nn9
 import code_03_nnmodel.nnmodel_07_mask_manipulator as nn7
 import code_04_trainer.trainer_01_core as tr1
 
@@ -43,9 +43,8 @@ def main_finetuen_dtvu_branch(
         num_layers: int = 4,
         num_sub_graphs: int = 128,
 
-        # branch
-        embed_dim_branch: int = 32,
-        num_heads_branch: int = 2,
+        # adapter
+        embed_dim_adapter: int = 32,
 
         # trainer
         tensorboard_dir: str | None = None,
@@ -69,6 +68,7 @@ def main_finetuen_dtvu_branch(
     num_users -= 2
 
     # 小样本
+    tfm.set_seed(999)
     finetune_data = finetune_data[torch.randperm(num_samples), :, :, :]
     finetune_targets = finetune_targets[torch.randperm(num_samples), :, :]
     num_samples = ex_num_samples
@@ -104,8 +104,8 @@ def main_finetuen_dtvu_branch(
     # =======================================================
     if tensorboard_dir is not None:
         dataset_name = dataset_path.replace("data_02_preprocessed_data/YJMob100K/p2_tensor/", "")[:-4]
-        os.makedirs(f"{tensorboard_dir}/{dataset_name}/EXP-{exp_time}-{model_type.upper()}-BRANCH", exist_ok=True)
-        tsb_writer = tsb.SummaryWriter(log_dir=f"{tensorboard_dir}/{dataset_name}/EXP-{exp_time}-{model_type.upper()}-BRANCH")
+        os.makedirs(f"{tensorboard_dir}/{dataset_name}/EXP-{exp_time}-{model_type.upper()}-ADAPTER", exist_ok=True)
+        tsb_writer = tsb.SummaryWriter(log_dir=f"{tensorboard_dir}/{dataset_name}/EXP-{exp_time}-{model_type.upper()}-ADAPTER")
     else:
         dataset_name = None
         tsb_writer = None
@@ -142,14 +142,10 @@ def main_finetuen_dtvu_branch(
         }, strict=False)
     # =======================================================
     # =======================================================
-    model = nn8.SideBranchesSequential(
+    model = nn9.AdapterInSequential(
         backbone=backbone,
         task_type=task_type,
-        branch_modernbert_config=ut2.load_modernbert_json_config(
-            json_file_path=config_path,
-            num_heads=num_heads_branch,
-            emb_dim=embed_dim_branch,
-        ),
+        emb_dim_adapter=embed_dim_adapter
     )
     for name, param in model.named_parameters():
         if "sequential_layer_" in name or "parallel_layer_" in name:
@@ -185,7 +181,7 @@ def main_finetuen_dtvu_branch(
         scheduler_policy=scheduler_policy,
         mask_manipulator=mask_manipulator,
         device=device,
-        log_path=f"{tensorboard_dir}/{dataset_name}/EXP-{exp_time}-{model_type.upper()}-BRANCH/exp.log" if tensorboard_dir is not None else None,
+        log_path=f"{tensorboard_dir}/{dataset_name}/EXP-{exp_time}-{model_type.upper()}-ADAPTER/exp.log" if tensorboard_dir is not None else None,
     )
     # =======================================================
     # =======================================================
@@ -215,20 +211,6 @@ def main_finetuen_dtvu_branch(
                 preds_step=3,
                 enable_v2g=enable_v2g,
             ),
-        #     val_record_step4=trainer.validate_epoch_dynamic(
-        #         loader=val_loader,
-        #         epoch_index=epoch_index,
-        #         history_step=history_steps[epoch_index],
-        #         preds_step=4,
-        #         enable_v2g=enable_v2g,
-        #     ),
-        #     val_record_step8=trainer.validate_epoch_dynamic(
-        #         loader=val_loader,
-        #         epoch_index=epoch_index,
-        #         history_step=history_steps[epoch_index],
-        #         preds_step=8,
-        #         enable_v2g=enable_v2g,
-        #     )
         )
         # =======================================================
         if tensorboard_dir is None:
@@ -268,26 +250,28 @@ if __name__ == "__main__":
         device="cuda:0",
         config_path="code_00_configs/modernbert_config_dropout.json",
         checkpoint_path="data_03_checkpoint/EMB_384_HEAD_6_LAYER_12_SUBGRAPH_256/pretrain_final.bin",
-        global_seed=42,
+        # global_seed=0,
         embed_dim=384,
         num_heads=6,
         num_layers=12,
         # num_sub_graphs=128,  # 256 本地跑不动
         enable_v2g=True,
         tensorboard_dir="record_01_tensorboard",
-        learning_rate=5e-4,
+        learning_rate=1e-3,
         weight_decay=1e-4,
         # scheduler_policy="epoch",
         clip_grad_norm_factor=0.1,
-        num_epochs=50,
+        num_epochs=80,
         history_step=(0.4, 0.8),
         # preds_step=2,
 
         num_sub_graphs=128,
-        embed_dim_branch=128,
-        num_heads_branch=4,
+        # embed_dim_adapter=192,
     )
 
-    main_finetune_dtvu_branch_partial(ex_num_samples=20, ex_num_users=5)
-    main_finetune_dtvu_branch_partial(ex_num_samples=20, ex_num_users=10)
-    main_finetune_dtvu_branch_partial(ex_num_samples=20, ex_num_users=20)
+    # main_finetune_dtvu_branch_partial(learning_rate=1e-3,ex_num_samples=20, ex_num_users=5, embed_dim_adapter=128, )
+    main_finetune_dtvu_branch_partial(global_seed=0,learning_rate=1e-3,ex_num_samples=20, ex_num_users=5, embed_dim_adapter=128, )
+    main_finetune_dtvu_branch_partial(global_seed=0,learning_rate=1e-3,ex_num_samples=20, ex_num_users=5, embed_dim_adapter=192, )
+    main_finetune_dtvu_branch_partial(global_seed=0,learning_rate=1e-3,ex_num_samples=20, ex_num_users=5, embed_dim_adapter=256, )
+    # main_finetune_dtvu_branch_partial(global_seed=0,learning_rate=5e-4,ex_num_samples=20, ex_num_users=5, embed_dim_adapter=192, )
+    # main_finetune_dtvu_branch_partial(learning_rate=1e-3,ex_num_samples=20, ex_num_users=5, embed_dim_adapter=256, )

@@ -61,6 +61,7 @@ def main_finetuen_dtu(
     num_nodes = int(torch.max(finetune_data).item())
 
     # 小样本
+    tfm.set_seed(888)
     finetune_data = finetune_data[torch.randperm(num_samples), :, :]
     num_samples = ex_num_samples
     num_users = ex_num_users
@@ -223,20 +224,20 @@ if __name__ == "__main__":
         model_type="sequential",
         device="cuda:0",
         config_path="code_00_configs/modernbert_config_dropout.json",
-        global_seed=42,
+        # global_seed=42,
         embed_dim=128,
         num_heads=4,
-        num_layers=6,
+        num_layers=12,
         tensorboard_dir="record_01_tensorboard",
         learning_rate=5e-4,
         weight_decay=1e-4,
-        # scheduler_policy="epoch",
+        scheduler_policy="epoch",
         clip_grad_norm_factor=0.1,
-        num_epochs=50,
+        num_epochs=64,
         history_step=(0.4, 0.8),
         # preds_step=2,
     )
 
-    main_finetuen_dtu_partial(ex_num_samples=20, ex_num_users=5)
-    main_finetuen_dtu_partial(ex_num_samples=20, ex_num_users=10)
-    main_finetuen_dtu_partial(ex_num_samples=20, ex_num_users=20)
+    main_finetuen_dtu_partial(global_seed=0, ex_num_samples=20, ex_num_users=5)
+    main_finetuen_dtu_partial(global_seed=1, ex_num_samples=20, ex_num_users=5)
+    main_finetuen_dtu_partial(global_seed=2, ex_num_samples=20, ex_num_users=5)

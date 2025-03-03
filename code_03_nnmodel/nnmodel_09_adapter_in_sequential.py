@@ -23,16 +23,7 @@ class AdapterInSequential(nn.Module):
         self.lambda_gates = list()
         for index in range(self.backbone.num_layers_time + self.backbone.num_layers_space):
             self.lambda_gates.append(nn.Parameter(torch.randn(size=(1,))))
-            if index % 2 == 0:
-                self.adapters.add_module(
-                    name=f"sequential_adapter_{index:02d}_space",
-                    module=nn4.Adapter(backbone_dim=self.emb_dim_backbone, adapter_dim=self.emb_dim_adapter),
-                )
-            else:
-                self.adapters.add_module(
-                    name=f"sequential_adapter_{index:02d}_time",
-                    module=nn4.Adapter(backbone_dim=self.emb_dim_backbone, adapter_dim=self.emb_dim_adapter),
-                )
+            self.adapters.append(nn4.Adapter(backbone_dim=self.emb_dim_backbone, adapter_dim=self.emb_dim_adapter))
 
     def forward(
             self,
@@ -96,7 +87,7 @@ class AdapterInSequential(nn.Module):
         attn_mask = attn_mask.reshape(d * o, t)
         # ======================================================
         # ======================================================
-        x = self.xxxxx(x, attn_mask, d, t, o, e)
+        x = self.forward_sequential_layers_with_adapter(x, attn_mask, d, t, o, e)
         # ======================================================
         # ======================================================
         assert x.shape == torch.Size([d * o, t, e])
@@ -158,7 +149,7 @@ class AdapterInSequential(nn.Module):
         attn_mask_u = attn_mask_u.reshape(d * u, t)
         # ======================================================
         # ======================================================
-        x = self.xxxxx(x, attn_mask_u, d, t, u, e)
+        x = self.forward_sequential_layers_with_adapter(x, attn_mask_u, d, t, u, e)
         # ======================================================
         # ======================================================
         assert x.shape == torch.Size([d * u, t, e])
@@ -189,11 +180,11 @@ class AdapterInSequential(nn.Module):
             o: int,
             e: int,
     ):
-        for layer_index, (name, layer) in enumerate(self.layers.named_children()):
+        for layer_index, (name, layer) in enumerate(self.backbone.layers.named_children()):
             if "space" in name:
                 position_ids = torch.arange(o, device=x.device).unsqueeze(0)
-                x, attn_mask = self.do_t_e__2__dt_o_e(x, attn_mask, d, t, o, e)
-                altered_attn_mask, sliding_window_mask = self.update_attention_mask(attn_mask)
+                x, attn_mask = self.backbone.do_t_e__2__dt_o_e(x, attn_mask, d, t, o, e)
+                altered_attn_mask, sliding_window_mask = self.backbone.update_attention_mask(attn_mask)
                 x = self.forward_layer_with_adapter(
                     x=x,
                     layer_index=layer_index,
@@ -205,8 +196,8 @@ class AdapterInSequential(nn.Module):
             # ======================================================
             elif "time" in name:
                 position_ids = torch.arange(t, device=x.device).unsqueeze(0)
-                x, attn_mask = self.dt_o_e__2__do_t_e(x, attn_mask, d, t, o, e)
-                altered_attn_mask, sliding_window_mask = self.update_attention_mask(attn_mask)
+                x, attn_mask = self.backbone.dt_o_e__2__do_t_e(x, attn_mask, d, t, o, e)
+                altered_attn_mask, sliding_window_mask = self.backbone.update_attention_mask(attn_mask)
                 x = self.forward_layer_with_adapter(
                     x=x,
                     layer_index=layer_index,
